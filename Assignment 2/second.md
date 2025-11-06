@@ -1,1 +1,2 @@
-A
+from jikhlin23 (mac app) https://chatgpt.com/share/690bf84f-30b0-8000-983f-e4ab93559c09
+can see it at second part of the chats ....
