@@ -28,28 +28,60 @@ def send_dns_query(server, domain):
         print(f"[DEBUG] Failed to query {server}: {e}")
         return None
 
+# def extract_next_nameservers(response):
+#     """
+#     Extracts nameserver (NS) records from the authority section of the response.
+#     Then, resolves those NS names to IP addresses.
+#     Returns a list of IPs of the next authoritative nameservers.
+#     """
+#     ns_ips = []  # List to store resolved nameserver IPs
+#     ns_names = []  # List to store nameserver domain names
+#
+#     # Loop through the authority section to extract NS records
+#     for rrset in response.authority:
+#         if rrset.rdtype == dns.rdatatype.NS:
+#             for rr in rrset:
+#                 ns_name = rr.to_text()
+#                 ns_names.append(ns_name)  # Extract nameserver hostname
+#                 print(f"Extracted NS hostname: {ns_name}")
+#
+#     # TODO: Resolve the extracted NS hostnames to IP addresses
+#     # To TODO, you would have to write a similar loop as above
+
+    return ns_ips  # Return list of resolved nameserver IPs
 def extract_next_nameservers(response):
     """
-    Extracts nameserver (NS) records from the authority section of the response.
-    Then, resolves those NS names to IP addresses.
-    Returns a list of IPs of the next authoritative nameservers.
+    Extracts NS (nameserver) records from the authority section and resolves them to IPs.
     """
-    ns_ips = []  # List to store resolved nameserver IPs
-    ns_names = []  # List to store nameserver domain names
+    ns_ips = []
+    ns_names = []
 
-    # Loop through the authority section to extract NS records
+    # Extract NS hostnames
     for rrset in response.authority:
         if rrset.rdtype == dns.rdatatype.NS:
             for rr in rrset:
-                ns_name = rr.to_text()
-                ns_names.append(ns_name)  # Extract nameserver hostname
+                ns_name = rr.to_text().strip()
+                ns_names.append(ns_name)
                 print(f"Extracted NS hostname: {ns_name}")
 
-    # TODO: Resolve the extracted NS hostnames to IP addresses
-    # To TODO, you would have to write a similar loop as above
+    # Extract any glue records (A records for NS) from the additional section
+    for rrset in response.additional:
+        if rrset.rdtype == dns.rdatatype.A:
+            for rr in rrset:
+                ns_ips.append(rr.address)
+                print(f"Found glue record: {rr.address}")
 
-    return ns_ips  # Return list of resolved nameserver IPs
+    # If no glue records, resolve NS hostnames using system resolver
+    if not ns_ips:
+        for ns_name in ns_names:
+            try:
+                ns_answer = dns.resolver.resolve(ns_name, 'A')
+                for rdata in ns_answer:
+                    ns_ips.append(rdata.to_text())
+            except Exception as e:
+                print(f"[DEBUG] Could not resolve {ns_name}: {e}")
 
+    return ns_ips
 
 def iterative_dns_lookup(domain):
     """
